@@ -38,7 +38,7 @@ export default function LoginPage() {
         router.push("/dashboard")
         router.refresh()
       }
-    } catch (error: any) {
+    } catch {
       toast.error("PROTOCOL_ERROR: Authentication failure.")
     } finally {
       setIsLoading(false)

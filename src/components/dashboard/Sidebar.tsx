@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
-import { motion } from "framer-motion"
 import {
   LayoutDashboard,
   Calendar,
@@ -39,7 +38,7 @@ interface Profile {
 interface NavItem {
   href: string
   label: string
-  icon: any
+  icon: React.ElementType
   external?: boolean
   active?: boolean
   adminOnly?: boolean
@@ -109,7 +108,7 @@ export default function Sidebar() {
       }
     }
     fetchProfile()
-  }, [])
+  }, [supabase])
 
 
   const handleLogout = async () => {

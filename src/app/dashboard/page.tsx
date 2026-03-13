@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@/utils/supabase/client"
 import { motion } from "framer-motion"
 import { 
   CheckSquare, 
@@ -12,7 +11,6 @@ import {
 } from "lucide-react"
 
 export default function DashboardPage() {
-  const supabase = createClient()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

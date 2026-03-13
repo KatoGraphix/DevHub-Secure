@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/utils/supabase/client"
 import { motion } from "framer-motion"
 import { 
@@ -48,6 +48,13 @@ export default function AdminPage() {
   const [tasks, setTasks] = useState<TaskRow[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  
+  const loadData = useCallback(async () => {
+    const { data: allProfiles } = await supabase.from("profiles").select("*").order("role_id")
+    if (allProfiles) setProfiles(allProfiles)
+    const { data: allTasks } = await supabase.from("tasks").select("*").order("created_at", { ascending: false })
+    if (allTasks) setTasks(allTasks)
+  }, [supabase])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,14 +78,7 @@ export default function AdminPage() {
       setLoading(false)
     }
     fetchData()
-  }, [])
-
-  const loadData = async () => {
-    const { data: allProfiles } = await supabase.from("profiles").select("*").order("role_id")
-    if (allProfiles) setProfiles(allProfiles)
-    const { data: allTasks } = await supabase.from("tasks").select("*").order("created_at", { ascending: false })
-    if (allTasks) setTasks(allTasks)
-  }
+  }, [supabase, loadData])
 
   const handleRefresh = async () => {
     setLoading(true)

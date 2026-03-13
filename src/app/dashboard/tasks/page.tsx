@@ -70,7 +70,7 @@ export default function TasksPage() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [supabase])
 
   const filteredTasks = tasks.filter(t =>
     t.title.toLowerCase().includes(search.toLowerCase()) ||
