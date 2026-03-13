@@ -13,7 +13,7 @@ export function createClient() {
       supabaseAnonKey || 'placeholder',
       { 
         cookies: {
-          get(name: string) {
+          get() {
             return undefined
           },
         } 
