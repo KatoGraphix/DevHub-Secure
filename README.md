@@ -11,6 +11,14 @@ A high-performance, animated internal Developer Dashboard for **MyMint**. Built 
 - **Real-time Updates**: Instant data synchronization across the team using Supabase Realtime.
 - **Premium UI**: Custom-built dashboard components with a sleek midnight aesthetic and emerald accents.
 
+## 🌐 Production Deployment
+
+The application is deployed and accessible at the following URL:
+
+> **Production URL**: [https://devhub-secure.vercel.app](https://devhub-secure.vercel.app)
+
+---
+
 ## 🚀 Getting Started
 
 ### 1. Project Creation
