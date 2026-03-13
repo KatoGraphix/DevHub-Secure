@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
@@ -12,22 +12,20 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2, Shield, Eye, EyeOff, Terminal, Wifi } from "lucide-react"
 
+// Generate deterministic matrix lines (same on server and client)
+const MATRIX_LINES = Array.from({ length: 100 }).map((_, i) => {
+  // Create pseudo-random but deterministic strings using index
+  const seed = (i * 7) % 36 // Deterministic "random" based on index
+  return seed.toString(36).repeat(10).substring(0, 100)
+})
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [matrixLines, setMatrixLines] = useState<string[]>([])
   const router = useRouter()
   const supabase = createClient()
-
-  // Generate matrix lines only on client side
-  useEffect(() => {
-    const lines = Array.from({ length: 100 }).map(() =>
-      Math.random().toString(36).substring(2).repeat(10)
-    )
-    setMatrixLines(lines)
-  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,7 +59,7 @@ export default function LoginPage() {
       
       {/* Matrix-like Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none select-none overflow-hidden text-[10px] leading-none text-cyan-400 break-all whitespace-normal">
-        {matrixLines.map((line, i) => (
+        {MATRIX_LINES.map((line, i) => (
           <div key={i} className="mb-1">
             {line}
           </div>
