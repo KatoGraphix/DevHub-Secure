@@ -6,11 +6,11 @@ export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Return a minimal client to avoid build-time crashes
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
+    // Return a minimal client to avoid build-time crashes (e.g. "Invalid supabaseUrl")
     return createServerClient(
-      supabaseUrl || 'https://placeholder.supabase.co',
-      supabaseAnonKey || 'placeholder',
+      'https://placeholder.supabase.co',
+      'placeholder',
       { 
         cookies: {
           get() {
