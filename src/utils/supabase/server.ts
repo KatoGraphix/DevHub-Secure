@@ -3,13 +3,11 @@ import { cookies } from 'next/headers'
 
 export function createClient() {
   const cookieStore = cookies()
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
 
-  console.log('Server environment variables:', { supabaseUrl, supabaseAnonKey, startsWithHttp: supabaseUrl?.startsWith('http') })
-
-  if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
-    console.warn('Server: Missing or invalid Supabase environment variables, using placeholder')
+  if (!supabaseUrl || !supabaseAnonKey || !/^https?:\/\/.+/.test(supabaseUrl)) {
+    console.warn('Server: Missing or invalid Supabase environment variables — check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY')
     // Return a minimal client to avoid build-time crashes (e.g. "Invalid supabaseUrl")
     return createServerClient(
       'https://placeholder.supabase.co',
