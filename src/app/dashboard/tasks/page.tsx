@@ -128,6 +128,20 @@ export default function TasksPage() {
     ))
   }
 
+  const deleteTask = async (taskId: string) => {
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", taskId)
+
+    if (error) {
+      console.error("Error deleting task:", error)
+      return
+    }
+
+    setTasks(prev => prev.filter((task) => task.id !== taskId))
+  }
+
   useEffect(() => {
     const fetchUsers = async () => {
       const { data, error } = await supabase
