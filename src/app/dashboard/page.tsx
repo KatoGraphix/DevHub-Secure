@@ -55,8 +55,12 @@ export default function DashboardPage() {
 
       const data = (await res.json()) as IntelligenceResponse
       setResult(data)
-    } catch (err: any) {
-      setError(err.message ?? "Something went wrong while contacting the AI service.")
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while contacting the AI service."
+      setError(message)
       setResult(null)
     } finally {
       setAnalyzing(false)

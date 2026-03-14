@@ -43,7 +43,15 @@ export async function runChatCompletion(messages: AiChatMessage[]) {
     throw new Error(text || "OpenAI API returned a non-OK response")
   }
 
-  const json = (await response.json()) as any
+  type OpenAIChatResponse = {
+    choices?: {
+      message?: {
+        content?: string
+      }
+    }[]
+  }
+
+  const json = (await response.json()) as OpenAIChatResponse
   const content =
     json.choices?.[0]?.message?.content ??
     '{"summary":"Unable to parse AI response.","tasks":[]}'

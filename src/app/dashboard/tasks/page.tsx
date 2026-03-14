@@ -109,20 +109,6 @@ export default function TasksPage() {
     })
   }
 
-  const fetchUsers = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name, email, role")
-      .order("first_name")
-
-    if (error) {
-      console.error("Error fetching users:", error)
-      return
-    }
-
-    setUsers(data || [])
-  }
-
   const updateTaskAssignment = async (taskId: string, assignedTo: string) => {
     const { error } = await supabase
       .from("tasks")
@@ -143,6 +129,20 @@ export default function TasksPage() {
   }
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email, role")
+        .order("first_name")
+
+      if (error) {
+        console.error("Error fetching users:", error)
+        return
+      }
+
+      setUsers(data || [])
+    }
+
     const fetchTasks = async () => {
       const { data } = await supabase
         .from("tasks")
