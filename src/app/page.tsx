@@ -3,19 +3,17 @@
 export const dynamic = "force-dynamic"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Loader2, Shield, Eye, EyeOff, Terminal, Wifi } from "lucide-react"
+import { Loader2, Shield, Eye, EyeOff, Terminal, Wifi, ArrowLeft, Mail } from "lucide-react"
 
-// Generate deterministic matrix lines (same on server and client)
 const MATRIX_LINES = Array.from({ length: 100 }).map((_, i) => {
-  // Create pseudo-random but deterministic strings using index
-  const seed = (i * 7) % 36 // Deterministic "random" based on index
+  const seed = (i * 7) % 36
   return seed.toString(36).repeat(10).substring(0, 100)
 })
 
@@ -24,6 +22,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [mode, setMode] = useState<"login" | "forgot">("login")
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [forgotSent, setForgotSent] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -49,6 +50,29 @@ export default function LoginPage() {
       }
     } catch {
       toast.error("PROTOCOL_ERROR: Authentication failure.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo,
+      })
+
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
+      setForgotSent(true)
+    } catch {
+      toast.error("Failed to send reset email.")
     } finally {
       setIsLoading(false)
     }
@@ -104,81 +128,190 @@ export default function LoginPage() {
               <Wifi size={14} />
             </motion.div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-cyan-400/80">
-              Secure Connection Established
+              {mode === "login" ? "Secure Connection Established" : "Password Recovery Protocol"}
             </span>
           </div>
 
-          <div className="p-8">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-black text-white mb-2 tracking-widest uppercase">
-                System Access
-              </h2>
-              <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
-                Authorized Personnel Only
-              </p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-8">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  Email Address
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="OPERATOR@ALGOHIVE.COM"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 uppercase text-xs h-12"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
-                    required
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-900 hover:text-cyan-500 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-transparent border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] rounded-sm group relative overflow-hidden"
+          <AnimatePresence mode="wait">
+            {mode === "login" ? (
+              <motion.div
+                key="login"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                className="p-8"
               >
-                <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/0 transition-colors" />
-                <span className="relative flex items-center justify-center gap-2">
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Shield size={16} />
-                      Access System
-                    </>
-                  )}
-                </span>
-              </Button>
-            </form>
-          </div>
+                <div className="text-center mb-10">
+                  <h2 className="text-2xl font-black text-white mb-2 tracking-widest uppercase">
+                    System Access
+                  </h2>
+                  <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
+                    Authorized Personnel Only
+                  </p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-8">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
+                      Email Address
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="OPERATOR@ALGOHIVE.COM"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 uppercase text-xs h-12"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
+                        Password
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={() => setMode("forgot")}
+                        className="text-[10px] text-cyan-500/50 hover:text-cyan-400 uppercase tracking-widest font-bold transition-colors"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
+                        required
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-900 hover:text-cyan-500 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-12 bg-transparent border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] rounded-sm group relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/0 transition-colors" />
+                    <span className="relative flex items-center justify-center gap-2">
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Shield size={16} />
+                          Access System
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="forgot"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="p-8"
+              >
+                <button
+                  onClick={() => { setMode("login"); setForgotSent(false); setForgotEmail("") }}
+                  className="flex items-center gap-2 text-cyan-500/50 hover:text-cyan-400 text-[10px] uppercase tracking-widest font-bold mb-8 transition-colors"
+                >
+                  <ArrowLeft size={12} />
+                  Back to Login
+                </button>
+
+                {forgotSent ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center space-y-4"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto">
+                      <Mail size={20} className="text-cyan-400" />
+                    </div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-widest">
+                      Reset Link Sent
+                    </h2>
+                    <p className="text-cyan-500/60 text-[10px] uppercase tracking-wider font-bold leading-relaxed">
+                      Check your inbox at<br />
+                      <span className="text-cyan-400">{forgotEmail}</span><br />
+                      and click the link to reset your password.
+                    </p>
+                    <button
+                      onClick={() => { setMode("login"); setForgotSent(false); setForgotEmail("") }}
+                      className="mt-4 text-[10px] text-cyan-500/50 hover:text-cyan-400 uppercase tracking-widest font-bold transition-colors underline"
+                    >
+                      Return to Login
+                    </button>
+                  </motion.div>
+                ) : (
+                  <>
+                    <div className="text-center mb-10">
+                      <h2 className="text-2xl font-black text-white mb-2 tracking-widest uppercase">
+                        Reset Password
+                      </h2>
+                      <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
+                        Enter your email to receive a reset link
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleForgotPassword} className="space-y-8">
+                      <div className="space-y-2">
+                        <Label htmlFor="forgot-email" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
+                          Email Address
+                        </Label>
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          placeholder="OPERATOR@ALGOHIVE.COM"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 uppercase text-xs h-12"
+                          required
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full h-12 bg-transparent border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] rounded-sm group relative overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/0 transition-colors" />
+                        <span className="relative flex items-center justify-center gap-2">
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Mail size={16} />
+                              Send Reset Link
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                    </form>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Footer Metadata */}
           <div className="border-t border-cyan-500/10 p-4 flex justify-between items-center bg-cyan-500/[0.02]">

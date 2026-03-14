@@ -10,29 +10,60 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Loader2, Shield, Eye, EyeOff, Terminal } from "lucide-react"
+import { Loader2, Shield, Eye, EyeOff, Terminal, AlertTriangle } from "lucide-react"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isReady, setIsReady] = useState(false)
+  const [tokenError, setTokenError] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
 
   useEffect(() => {
-    // Check if we have the access token from the URL
-    const accessToken = searchParams.get('access_token')
-    const refreshToken = searchParams.get('refresh_token')
+    const setupSession = async () => {
+      // PKCE flow: exchange the code for a session
+      const code = searchParams.get("code")
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          setTokenError(true)
+          return
+        }
+        setIsReady(true)
+        return
+      }
 
-    if (accessToken && refreshToken) {
-      // Set the session with the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      })
+      // Legacy implicit flow: access_token + refresh_token in params
+      const accessToken = searchParams.get("access_token")
+      const refreshToken = searchParams.get("refresh_token")
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        if (error) {
+          setTokenError(true)
+          return
+        }
+        setIsReady(true)
+        return
+      }
+
+      // Check if user already has an active session (e.g. coming back to the page)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setIsReady(true)
+        return
+      }
+
+      setTokenError(true)
     }
+
+    setupSession()
   }, [searchParams, supabase])
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -51,9 +82,7 @@ export default function ResetPasswordPage() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      })
+      const { error } = await supabase.auth.updateUser({ password })
 
       if (error) {
         toast.error(error.message)
@@ -71,15 +100,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-[#020617] font-mono selection:bg-cyan-500/30">
-
-      {/* Matrix-like Background Pattern */}
-      <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none select-none overflow-hidden text-[10px] leading-none text-cyan-500 break-all whitespace-normal">
-        {Array.from({ length: 100 }).map((_, i) => (
-          <div key={i} className="mb-1">
-            {Math.random().toString(36).substring(2).repeat(10)}
-          </div>
-        ))}
-      </div>
 
       {/* Background Glows */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -119,78 +139,112 @@ export default function ResetPasswordPage() {
               <Shield size={14} />
             </motion.div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-cyan-400/80">
-              Password Reset Required
+              Password Reset Protocol
             </span>
           </div>
 
           <div className="p-8">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-black text-white mb-2 tracking-widest uppercase">
-                New Password
-              </h2>
-              <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
-                Enter a secure password for your account
-              </p>
-            </div>
-
-            <form onSubmit={handlePasswordReset} className="space-y-8">
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  New Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-900 hover:text-cyan-500 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  Confirm Password
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
-                  required
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-transparent border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] rounded-sm group relative overflow-hidden"
+            {tokenError ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center space-y-4"
               >
-                <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/0 transition-colors" />
-                <span className="relative flex items-center justify-center gap-2">
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Shield size={16} />
-                      Update Password
-                    </>
-                  )}
-                </span>
-              </Button>
-            </form>
+                <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+                  <AlertTriangle size={20} className="text-red-400" />
+                </div>
+                <h2 className="text-xl font-black text-white uppercase tracking-widest">
+                  Invalid Reset Link
+                </h2>
+                <p className="text-cyan-500/60 text-[10px] uppercase tracking-wider font-bold leading-relaxed">
+                  This link is expired or invalid.<br />
+                  Please request a new password reset.
+                </p>
+                <button
+                  onClick={() => router.push("/")}
+                  className="mt-4 text-[10px] text-cyan-500/50 hover:text-cyan-400 uppercase tracking-widest font-bold transition-colors underline"
+                >
+                  Back to Login
+                </button>
+              </motion.div>
+            ) : !isReady ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
+                  Verifying reset token...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="text-center mb-10">
+                  <h2 className="text-2xl font-black text-white mb-2 tracking-widest uppercase">
+                    New Password
+                  </h2>
+                  <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
+                    Enter a secure password for your account
+                  </p>
+                </div>
+
+                <form onSubmit={handlePasswordReset} className="space-y-8">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-900 hover:text-cyan-500 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
+                      Confirm Password
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
+                      required
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-12 bg-transparent border border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] rounded-sm group relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/0 transition-colors" />
+                    <span className="relative flex items-center justify-center gap-2">
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Shield size={16} />
+                          Update Password
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </form>
+              </>
+            )}
           </div>
 
           {/* Footer Metadata */}
