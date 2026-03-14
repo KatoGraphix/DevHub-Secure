@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, KeyboardEvent } from "react"
 import { motion } from "framer-motion"
 import { 
   CheckSquare, 
@@ -12,14 +12,63 @@ import {
   ArrowRight 
 } from "lucide-react"
 
+interface GeneratedTask {
+  title: string
+  description?: string
+  priority?: string
+  due_date?: string | null
+}
+
+interface IntelligenceResponse {
+  summary: string
+  tasks: GeneratedTask[]
+}
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
+  const [input, setInput] = useState("")
+  const [analyzing, setAnalyzing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<IntelligenceResponse | null>(null)
 
   useEffect(() => {
-    // Keep loading state simulation for smooth transition
     const timer = setTimeout(() => setLoading(false), 500)
     return () => clearTimeout(timer)
   }, [])
+
+  const runIntelligence = async () => {
+    if (!input.trim() || analyzing) return
+    setAnalyzing(true)
+    setError(null)
+
+    try {
+      const res = await fetch("/api/task-intelligence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: input.trim() }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Unable to generate smart task right now.")
+      }
+
+      const data = (await res.json()) as IntelligenceResponse
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message ?? "Something went wrong while contacting the AI service.")
+      setResult(null)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault()
+      void runIntelligence()
+    }
+  }
 
   if (loading) {
     return (
@@ -58,8 +107,11 @@ export default function DashboardPage() {
             </div>
             <div className="flex-1">
               <textarea 
-                placeholder='"Describe what you need to do... &#10;"Prepare investor pitch for DevHub next week"'
+                placeholder={`"Describe what you need to do..."\n"Prepare investor pitch for DevHub next week"`}
                 className="w-full bg-transparent text-zinc-300 placeholder:text-zinc-700 resize-none outline-none text-lg min-h-[120px] pt-1"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
               />
             </div>
           </div>
@@ -79,36 +131,112 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <button className="w-full bg-[#18181b] border border-[#27272a] hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-400 py-4 rounded-xl flex items-center justify-center gap-3 text-zinc-400 font-bold text-sm uppercase tracking-widest transition-all group/btn mt-auto">
+          <button
+            onClick={runIntelligence}
+            disabled={analyzing || !input.trim()}
+            className="w-full bg-[#18181b] border border-[#27272a] hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-400 py-4 rounded-xl flex items-center justify-center gap-3 text-zinc-400 font-bold text-sm uppercase tracking-widest transition-all group/btn mt-auto disabled:opacity-40 disabled:hover:bg-[#18181b] disabled:hover:border-[#27272a]"
+          >
             <Sparkles size={18} className="group-hover/btn:scale-110 transition-transform" />
-            <span>Generate smart task</span>
+            <span>{analyzing ? "Analyzing..." : "Generate smart task"}</span>
           </button>
         </motion.div>
 
-        {/* Right Card: Output Indicator */}
+        {/* Right Card: Output */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-[#0c0c0e] border border-[#1c1c1f] rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 hover:border-[#27272a] transition-all overflow-hidden relative"
+          className="bg-[#0c0c0e] border border-[#1c1c1f] rounded-2xl p-8 flex flex-col text-center space-y-4 hover:border-[#27272a] transition-all overflow-hidden relative"
         >
-          {/* Glowing Orb */}
-          <div className="relative mb-4">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.6, 0.3]
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="absolute inset-0 bg-blue-500 rounded-full blur-2xl"
-            />
-            <div className="w-3 h-3 bg-blue-400 rounded-full relative z-10 shadow-[0_0_15px_rgba(96,165,250,0.8)]" />
-          </div>
+          {analyzing && (
+            <div className="flex flex-col items-center justify-center flex-1 space-y-4">
+              <div className="relative mb-2">
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.6, 0.3]
+                  }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                  className="absolute inset-0 bg-blue-500 rounded-full blur-2xl"
+                />
+                <div className="w-4 h-4 bg-blue-400 rounded-full relative z-10 shadow-[0_0_15px_rgba(96,165,250,0.8)]" />
+              </div>
+              <h3 className="text-white text-lg font-bold">Analyzing task...</h3>
+              <p className="text-zinc-600 text-sm max-w-[260px] leading-relaxed">
+                DevHub is breaking this down into actionable steps.
+              </p>
+            </div>
+          )}
 
-          <h3 className="text-white text-lg font-bold">Waiting for task input</h3>
-          <p className="text-zinc-600 text-sm max-w-[240px] leading-relaxed">
-            AI insights will appear here once you describe your task
-          </p>
+          {!analyzing && error && (
+            <div className="flex flex-col items-center justify-center flex-1 space-y-3">
+              <h3 className="text-red-400 text-lg font-bold">Unable to generate tasks</h3>
+              <p className="text-zinc-500 text-sm max-w-[260px] leading-relaxed">
+                {error}
+              </p>
+            </div>
+          )}
+
+          {!analyzing && !error && result && (
+            <div className="flex flex-col items-start text-left space-y-4 flex-1">
+              <div>
+                <h3 className="text-white text-lg font-bold mb-1">AI Task Plan</h3>
+                <p className="text-zinc-500 text-sm leading-relaxed">
+                  {result.summary}
+                </p>
+              </div>
+              <div className="space-y-2 w-full">
+                {result.tasks.map((task, index) => (
+                  <div
+                    key={index}
+                    className="w-full rounded-xl border border-[#27272a] bg-[#09090b] px-4 py-3 text-left"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-white">
+                        {task.title}
+                      </p>
+                      {task.priority && (
+                        <span className="text-[10px] uppercase tracking-widest text-blue-400">
+                          {task.priority}
+                        </span>
+                      )}
+                    </div>
+                    {task.description && (
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {task.description}
+                      </p>
+                    )}
+                    {task.due_date && (
+                      <p className="text-[10px] text-zinc-600 mt-1">
+                        Due: {task.due_date}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!analyzing && !error && !result && (
+            <div className="flex flex-col items-center justify-center flex-1 space-y-4">
+              <div className="relative mb-4">
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.6, 0.3]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="absolute inset-0 bg-blue-500 rounded-full blur-2xl"
+                />
+                <div className="w-3 h-3 bg-blue-400 rounded-full relative z-10 shadow-[0_0_15px_rgba(96,165,250,0.8)]" />
+              </div>
+
+              <h3 className="text-white text-lg font-bold">Waiting for task input</h3>
+              <p className="text-zinc-600 text-sm max-w-[240px] leading-relaxed">
+                AI insights will appear here once you describe your task
+              </p>
+            </div>
+          )}
 
           {/* Decorative Corner Elements */}
           <div className="absolute top-4 right-4 text-zinc-800">
@@ -125,7 +253,9 @@ export default function DashboardPage() {
         <div className="flex items-center gap-8">
             <div className="space-y-1">
                 <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-600">Model</p>
-                <p className="text-xs text-zinc-400 font-medium tracking-tight">GPT-4 Turbo</p>
+                <p className="text-xs text-zinc-400 font-medium tracking-tight">
+                  {process.env.NEXT_PUBLIC_MODEL_NAME ?? "Configured via API"}
+                </p>
             </div>
             <div className="space-y-1">
                 <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-600">Context</p>
