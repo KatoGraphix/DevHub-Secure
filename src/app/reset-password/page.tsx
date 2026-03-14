@@ -4,66 +4,55 @@ export const dynamic = "force-dynamic"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Loader2, Shield, Eye, EyeOff, Terminal, Wifi } from "lucide-react"
+import { Loader2, Shield, Eye, EyeOff, Terminal } from "lucide-react"
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("")
+export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [showResetModal, setShowResetModal] = useState(false)
-  const [resetEmail, setResetEmail] = useState("")
-  const [isResetting, setIsResetting] = useState(false)
-  const [matrixPattern, setMatrixPattern] = useState<string[]>([])
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   useEffect(() => {
-    // Generate matrix pattern only on client side
-    const pattern = Array.from({ length: 100 }).map(() =>
-      Math.random().toString(36).substring(2).repeat(10)
-    )
-    setMatrixPattern(pattern)
-  }, [])
+    // Check if we have the access token from the URL
+    const accessToken = searchParams.get('access_token')
+    const refreshToken = searchParams.get('refresh_token')
+
+    if (accessToken && refreshToken) {
+      // Set the session with the tokens from the URL
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      })
+    }
+  }, [searchParams, supabase])
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsResetting(true)
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      })
-
-      if (error) {
-        toast.error(error.message)
-        return
-      }
-
-      toast.success("Password reset email sent! Check your inbox.")
-      setShowResetModal(false)
-      setResetEmail("")
-    } catch {
-      toast.error("Failed to send reset email.")
-    } finally {
-      setIsResetting(false)
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match")
+      return
     }
-  }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error } = await supabase.auth.updateUser({
+        password: password
       })
 
       if (error) {
@@ -71,13 +60,10 @@ export default function LoginPage() {
         return
       }
 
-      if (data?.user) {
-        toast.success("ACCESS GRANTED")
-        router.push("/dashboard")
-        router.refresh()
-      }
+      toast.success("Password updated successfully!")
+      router.push("/dashboard")
     } catch {
-      toast.error("PROTOCOL_ERROR: Authentication failure.")
+      toast.error("Failed to update password.")
     } finally {
       setIsLoading(false)
     }
@@ -85,12 +71,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden bg-[#020617] font-mono selection:bg-cyan-500/30">
-      
+
       {/* Matrix-like Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none select-none overflow-hidden text-[10px] leading-none text-cyan-500 break-all whitespace-normal">
-        {matrixPattern.map((line, i) => (
+        {Array.from({ length: 100 }).map((_, i) => (
           <div key={i} className="mb-1">
-            {line}
+            {Math.random().toString(36).substring(2).repeat(10)}
           </div>
         ))}
       </div>
@@ -102,7 +88,7 @@ export default function LoginPage() {
       </div>
 
       {/* Logo Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3 mb-10 z-10"
@@ -115,14 +101,14 @@ export default function LoginPage() {
         </h1>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md p-6 relative z-10"
       >
         <div className="bg-[#020617]/80 backdrop-blur-md border border-cyan-500/30 rounded-lg shadow-[0_0_50px_-12px_rgba(6,182,212,0.3)] overflow-hidden">
-          
+
           {/* Header Status Bar */}
           <div className="bg-cyan-500/5 border-b border-cyan-500/20 px-4 py-2 flex items-center justify-center gap-2">
             <motion.div
@@ -130,44 +116,27 @@ export default function LoginPage() {
               transition={{ duration: 2, repeat: Infinity }}
               className="text-cyan-400"
             >
-              <Wifi size={14} />
+              <Shield size={14} />
             </motion.div>
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-cyan-400/80">
-              Secure Connection Established
+              Password Reset Required
             </span>
           </div>
 
           <div className="p-8">
             <div className="text-center mb-10">
               <h2 className="text-2xl font-black text-white mb-2 tracking-widest uppercase">
-                System Access
+                New Password
               </h2>
               <p className="text-cyan-500/60 text-[10px] uppercase tracking-widest font-bold">
-                Authorized Personnel Only
+                Enter a secure password for your account
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-8">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  Email Address
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="OPERATOR@ALGOHIVE.COM"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 uppercase text-xs h-12"
-                    required
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handlePasswordReset} className="space-y-8">
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  Password
+                  New Password
                 </Label>
                 <div className="relative">
                   <Input
@@ -179,7 +148,7 @@ export default function LoginPage() {
                     className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
                     required
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-900 hover:text-cyan-500 transition-colors"
@@ -187,13 +156,21 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(true)}
-                  className="text-cyan-500/60 hover:text-cyan-400 text-[9px] uppercase tracking-[0.2em] font-bold transition-colors"
-                >
-                  Forgot Password?
-                </button>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
+                  Confirm Password
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 text-xs h-12"
+                  required
+                />
               </div>
 
               <Button
@@ -208,7 +185,7 @@ export default function LoginPage() {
                   ) : (
                     <>
                       <Shield size={16} />
-                      Access System
+                      Update Password
                     </>
                   )}
                 </span>
@@ -235,68 +212,6 @@ export default function LoginPage() {
           </div>
         </div>
       </motion.div>
-
-      {/* Password Reset Modal */}
-      {showResetModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setShowResetModal(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[#020617]/90 backdrop-blur-md border border-cyan-500/30 rounded-lg shadow-[0_0_50px_-12px_rgba(6,182,212,0.3)] p-6 w-full max-w-sm"
-          >
-            <h3 className="text-lg font-bold text-white mb-4 text-center">Reset Password</h3>
-            <p className="text-cyan-500/60 text-xs text-center mb-6">
-              Enter your email address and we&apos;ll send you a link to reset your password.
-            </p>
-
-            <form onSubmit={handlePasswordReset} className="space-y-4">
-              <div>
-                <Label htmlFor="resetEmail" className="text-cyan-500/60 text-[10px] uppercase tracking-[0.2em] font-black">
-                  Email Address
-                </Label>
-                <Input
-                  id="resetEmail"
-                  type="email"
-                  placeholder="OPERATOR@ALGOHIVE.COM"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="bg-transparent border border-cyan-500/20 rounded-sm text-cyan-100 placeholder:text-cyan-900/50 focus-visible:ring-1 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 uppercase text-xs h-12"
-                  required
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(false)}
-                  className="flex-1 bg-transparent border border-cyan-500/20 text-cyan-500/60 hover:text-cyan-400 px-4 py-2 rounded-sm text-xs font-bold uppercase tracking-[0.2em] transition-all"
-                >
-                  Cancel
-                </button>
-                <Button
-                  type="submit"
-                  disabled={isResetting}
-                  className="flex-1 h-10 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs uppercase tracking-[0.2em] rounded-sm transition-all"
-                >
-                  {isResetting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Send Reset Link"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
     </div>
   )
 }

@@ -1,0 +1,34 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "supabase",
+    "shadcn",
+    "tailwindcss",
+    "nextjs",
+    "framer",
+    "lucide",
+    "tanstack",
+    "hookform",
+    "resolvers",
+    "zod",
+    "sonner",
+    "ibm",
+    "plex",
+    "mono",
+    "cva",
+    "clsx",
+    "devhub",
+    "matimba",
+    "mihle"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    ".next/**",
+    ".git/**",
+    "package-lock.json",
+    "*.log",
+    "scripts/**",
+    "package.json"
+  ]
+}

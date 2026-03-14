@@ -13,8 +13,8 @@ import {
   List as ListIcon,
   Calendar,
   User as UserIcon,
-  MoreVertical,
-  Circle
+  Circle,
+  Trash2
 } from "lucide-react"
 
 interface Task {
@@ -29,6 +29,14 @@ interface Task {
   created_at: string
   assigned_profile?: { first_name: string; last_name: string } | null
   creator_profile?: { first_name: string; last_name: string } | null
+}
+
+interface Profile {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  role: string
 }
 
 const statusColumns = [
@@ -51,6 +59,88 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<"kanban" | "list">("kanban")
   const [search, setSearch] = useState("")
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [filters, setFilters] = useState({
+    priority: "",
+    status: "",
+    assignee: ""
+  })
+  const [showFilters, setShowFilters] = useState(false)
+  const [users, setUsers] = useState<Profile[]>([])
+  const [editingAssignee, setEditingAssignee] = useState<string | null>(null)
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    priority: "medium",
+    due_date: "",
+    assigned_to: ""
+  })
+
+  const createTask = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({
+        title: newTask.title,
+        description: newTask.description || null,
+        priority: newTask.priority,
+        due_date: newTask.due_date || null,
+        assigned_to: newTask.assigned_to || null,
+        created_by: user.id,
+        status: "todo"
+      })
+      .select()
+
+    if (error) {
+      console.error("Error creating task:", error)
+      return
+    }
+
+    setTasks(prev => [data[0], ...prev])
+    setShowCreateModal(false)
+    setNewTask({
+      title: "",
+      description: "",
+      priority: "medium",
+      due_date: "",
+      assigned_to: ""
+    })
+  }
+
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, email, role")
+      .order("first_name")
+
+    if (error) {
+      console.error("Error fetching users:", error)
+      return
+    }
+
+    setUsers(data || [])
+  }
+
+  const updateTaskAssignment = async (taskId: string, assignedTo: string) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ assigned_to: assignedTo || null })
+      .eq("id", taskId)
+
+    if (error) {
+      console.error("Error updating task assignment:", error)
+      return
+    }
+
+    // Update local state
+    setTasks(prev => prev.map(task => 
+      task.id === taskId 
+        ? { ...task, assigned_to: assignedTo || null }
+        : task
+    ))
+  }
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -62,7 +152,12 @@ export default function TasksPage() {
       if (data) setTasks(data)
       setLoading(false)
     }
-    fetchTasks()
+
+    const loadData = async () => {
+      await Promise.all([fetchTasks(), fetchUsers()])
+    }
+
+    loadData()
 
     const channel = supabase
       .channel("tasks-realtime-devhub")
@@ -74,10 +169,14 @@ export default function TasksPage() {
     return () => { supabase.removeChannel(channel) }
   }, [supabase])
 
-  const filteredTasks = tasks.filter(t =>
-    t.title.toLowerCase().includes(search.toLowerCase()) ||
-    (t.description && t.description.toLowerCase().includes(search.toLowerCase()))
-  )
+  const filteredTasks = tasks.filter(t => {
+    const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
+      (t.description && t.description.toLowerCase().includes(search.toLowerCase()))
+    const matchesPriority = !filters.priority || t.priority === filters.priority
+    const matchesStatus = !filters.status || t.status === filters.status
+    const matchesAssignee = !filters.assignee || t.assigned_to === filters.assignee
+    return matchesSearch && matchesPriority && matchesStatus && matchesAssignee
+  })
 
   if (loading) {
     return (
@@ -119,7 +218,10 @@ export default function TasksPage() {
             </button>
           </div>
 
-          <button className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all">
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
+          >
             <Plus size={16} />
             Create Task
           </button>
@@ -138,11 +240,65 @@ export default function TasksPage() {
             className="w-full bg-[#18181b] border border-[#27272a] rounded-xl py-2 pl-10 pr-4 text-sm text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-blue-500/50 transition-all"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#18181b] border border-[#27272a] rounded-xl text-xs font-semibold text-zinc-400 hover:text-white hover:border-[#3f3f46] transition-all">
+        <button 
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#18181b] border border-[#27272a] rounded-xl text-xs font-semibold text-zinc-400 hover:text-white hover:border-[#3f3f46] transition-all"
+        >
           <Filter size={14} />
           Filters
         </button>
       </div>
+
+      {/* Filters */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-8 py-4 bg-[#09090b]/50 backdrop-blur-sm border-b border-[#1c1c1f] overflow-hidden"
+          >
+            <div className="flex items-center gap-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Priority</label>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                  className="bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-1 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">All</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                  className="bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-1 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">All</option>
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+              
+              <button
+                onClick={() => setFilters({ priority: "", status: "", assignee: "" })}
+                className="self-end text-xs text-zinc-500 hover:text-zinc-300 underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 overflow-auto custom-scrollbar">
         {view === "kanban" ? (
@@ -188,8 +344,11 @@ export default function TasksPage() {
                                         <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${priorityStyles[task.priority]}`}>
                                             {task.priority}
                                         </span>
-                                        <button className="text-zinc-700 group-hover:text-zinc-400">
-                                            <MoreVertical size={14} />
+                                        <button 
+                                          onClick={() => deleteTask(task.id)}
+                                          className="text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                        >
+                                            <Trash2 size={12} />
                                         </button>
                                     </div>
                                     <h4 className="text-sm font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors leading-snug">
@@ -201,13 +360,38 @@ export default function TasksPage() {
                                         </p>
                                     )}
                                     <div className="flex items-center gap-3 pt-4 border-t border-[#1c1c1f]">
-                                        <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                                            <div className="w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
-                                                <UserIcon size={10} />
-                                            </div>
-                                            <span className="truncate max-w-[80px]">
-                                                {task.assigned_profile ? task.assigned_profile.first_name : "Open"}
-                                            </span>
+                                        <div className="relative">
+                                            {editingAssignee === task.id ? (
+                                                <select
+                                                    value={task.assigned_to || ""}
+                                                    onChange={(e) => {
+                                                        updateTaskAssignment(task.id, e.target.value)
+                                                        setEditingAssignee(null)
+                                                    }}
+                                                    onBlur={() => setEditingAssignee(null)}
+                                                    className="w-24 bg-[#18181b] border border-blue-500 rounded px-2 py-1 text-[10px] text-white focus:outline-none"
+                                                    autoFocus
+                                                >
+                                                    <option value="">Unassigned</option>
+                                                    {users.map((user) => (
+                                                        <option key={user.id} value={user.id}>
+                                                            {user.first_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div 
+                                                    className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-bold uppercase tracking-wider cursor-pointer hover:text-blue-400 transition-colors"
+                                                    onClick={() => setEditingAssignee(task.id)}
+                                                >
+                                                    <div className="w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+                                                        <UserIcon size={10} />
+                                                    </div>
+                                                    <span className="truncate max-w-[80px]">
+                                                        {task.assigned_profile ? task.assigned_profile.first_name : "Open"}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                         {task.due_date && (
                                             <div className="ml-auto flex items-center gap-1 text-[10px] text-zinc-600 font-bold">
@@ -261,9 +445,32 @@ export default function TasksPage() {
                                         <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
                                             <UserIcon size={12} className="text-zinc-500" />
                                         </div>
-                                        <span className="text-xs font-bold text-zinc-400">
-                                            {task.assigned_profile ? `${task.assigned_profile.first_name} ${task.assigned_profile.last_name}` : "UNASSIGNED"}
-                                        </span>
+                                        {editingAssignee === task.id ? (
+                                            <select
+                                                value={task.assigned_to || ""}
+                                                onChange={(e) => {
+                                                    updateTaskAssignment(task.id, e.target.value)
+                                                    setEditingAssignee(null)
+                                                }}
+                                                onBlur={() => setEditingAssignee(null)}
+                                                className="bg-[#18181b] border border-blue-500 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                                                autoFocus
+                                            >
+                                                <option value="">Unassigned</option>
+                                                {users.map((user) => (
+                                                    <option key={user.id} value={user.id}>
+                                                        {user.first_name} {user.last_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <span 
+                                                className="text-xs font-bold text-zinc-400 cursor-pointer hover:text-blue-400 transition-colors"
+                                                onClick={() => setEditingAssignee(task.id)}
+                                            >
+                                                {task.assigned_profile ? `${task.assigned_profile.first_name} ${task.assigned_profile.last_name}` : "UNASSIGNED"}
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-5">
@@ -295,6 +502,111 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* Create Task Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0c0c0e] border border-[#1c1c1f] rounded-2xl p-6 w-full max-w-md"
+            >
+              <h3 className="text-lg font-bold text-white mb-4">Create New Task</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    placeholder="Task title"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-1">Description</label>
+                  <textarea
+                    value={newTask.description}
+                    onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+                    rows={3}
+                    placeholder="Task description (optional)"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-400 mb-1">Priority</label>
+                    <select
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value }))}
+                      className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-400 mb-1">Due Date</label>
+                    <input
+                      type="date"
+                      value={newTask.due_date}
+                      onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
+                      className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-1">Assign To</label>
+                  <select
+                    value={newTask.assigned_to}
+                    onChange={(e) => setNewTask(prev => ({ ...prev, assigned_to: e.target.value }))}
+                    className="w-full bg-[#18181b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">Unassigned</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.first_name} {user.last_name} ({user.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 bg-[#18181b] border border-[#27272a] text-zinc-400 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createTask}
+                  disabled={!newTask.title.trim()}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                >
+                  Create Task
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -6,17 +6,20 @@ export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+  console.log('Server environment variables:', { supabaseUrl, supabaseAnonKey, startsWithHttp: supabaseUrl?.startsWith('http') })
+
   if (!supabaseUrl || !supabaseAnonKey || !supabaseUrl.startsWith('http')) {
+    console.warn('Server: Missing or invalid Supabase environment variables, using placeholder')
     // Return a minimal client to avoid build-time crashes (e.g. "Invalid supabaseUrl")
     return createServerClient(
       'https://placeholder.supabase.co',
       'placeholder',
-      { 
+      {
         cookies: {
           get() {
             return undefined
           },
-        } 
+        }
       }
     )
   }
