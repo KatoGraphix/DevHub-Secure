@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import {
   LayoutDashboard,
   Calendar,
-  Zap,
+  BookOpen,
   Github,
   Search,
   Wrench,
@@ -24,23 +24,13 @@ import {
   Globe,
   Database
 } from "lucide-react"
-import { useState, useEffect } from "react"
-
-interface Profile {
-  first_name: string
-  last_name: string
-  email: string
-  role: string
-  role_id: string
-  position: string
-}
+import { useProfile } from "@/components/providers/ProfileProvider"
 
 interface NavItem {
   href: string
   label: string
   icon: React.ElementType
   external?: boolean
-  active?: boolean
   adminOnly?: boolean
 }
 
@@ -53,9 +43,9 @@ const navSections: NavSection[] = [
   {
     label: "Main",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/dashboard", label: "AI Intelligence", icon: LayoutDashboard },
       { href: "/dashboard/tasks", label: "Smart Schedule", icon: Calendar },
-      { href: "/dashboard/api-docs", label: "Task Intelligence", icon: Zap },
+      { href: "/dashboard/api-docs", label: "API Docs", icon: BookOpen },
     ]
   },
   {
@@ -79,11 +69,11 @@ const navSections: NavSection[] = [
     ]
   },
   {
-      label: "System",
-      items: [
+    label: "System",
+    items: [
       { href: "/dashboard/admin", label: "Admin Panel", icon: Wrench, adminOnly: true },
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
-      ]
+    ]
   }
 ]
 
@@ -91,25 +81,7 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single()
-        if (data) setProfile(data)
-      }
-    }
-    fetchProfile()
-  }, [supabase])
-
+  const { profile } = useProfile()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -138,70 +110,69 @@ export default function Sidebar() {
       {/* Navigation Groups */}
       <nav className="flex-1 px-4 py-2 space-y-8 overflow-y-auto custom-scrollbar font-sans">
         {navSections.map((section) => {
-            const visibleItems = section.items.filter(item => !item.adminOnly || (mounted && isAdmin))
-            if (visibleItems.length === 0) return null
+          const visibleItems = section.items.filter(item => !item.adminOnly || isAdmin)
+          if (visibleItems.length === 0) return null
 
-            return (
-                <div key={section.label} className="space-y-2">
-                    <h3 className="px-4 text-[10px] uppercase tracking-widest font-bold text-zinc-600">
-                        {section.label}
-                    </h3>
-                    <div className="space-y-1">
-                        {visibleItems.map((item) => {
-                            const isActive = pathname === item.href
-                            const content = (
-                                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${
-                                    isActive
-                                        ? "bg-[#18181b] text-white"
-                                        : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50"
-                                }`}>
-                                    <item.icon className={`w-4 h-4 ${isActive ? "text-blue-400" : "text-zinc-600 group-hover:text-zinc-400"}`} />
-                                    <span className="truncate">{item.label}</span>
-                                    {item.external && <ExternalLink size={10} className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity" />}
-                                    {isActive && !item.external && <div className="ml-auto w-1 h-3 bg-blue-500 rounded-full" />}
-                                </div>
-                            )
-
-                            if (item.external) {
-                                return (
-                                    <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" className="block">
-                                        {content}
-                                    </a>
-                                )
-                            }
-
-                            return (
-                                <Link
-                                    key={item.label}
-                                    href={item.href}
-                                    className="block"
-                                >
-                                    {content}
-                                </Link>
-                            )
-                        })}
+          return (
+            <div key={section.label} className="space-y-2">
+              <h3 className="px-4 text-[10px] uppercase tracking-widest font-bold text-zinc-600">
+                {section.label}
+              </h3>
+              <div className="space-y-1">
+                {visibleItems.map((item) => {
+                  const isActive = pathname === item.href
+                  const content = (
+                    <div className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${
+                      isActive
+                        ? "bg-[#18181b] text-white"
+                        : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50"
+                    }`}>
+                      <item.icon className={`w-4 h-4 ${isActive ? "text-blue-400" : "text-zinc-600 group-hover:text-zinc-400"}`} />
+                      <span className="truncate">{item.label}</span>
+                      {item.external && <ExternalLink size={10} className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity" />}
+                      {isActive && !item.external && <div className="ml-auto w-1 h-3 bg-blue-500 rounded-full" />}
                     </div>
-                </div>
-            )
+                  )
+
+                  if (item.external) {
+                    return (
+                      <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" className="block">
+                        {content}
+                      </a>
+                    )
+                  }
+
+                  return (
+                    <Link key={item.label} href={item.href} className="block">
+                      {content}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )
         })}
       </nav>
 
       {/* User Footer */}
       <div className="mt-auto p-4 border-t border-[#1c1c1f]">
         <div className="flex items-center justify-between group">
-          <div className="flex items-center gap-3 border border-transparent group-hover:bg-[#18181b] group-hover:border-[#27272a] p-2 rounded-xl transition-all duration-200 flex-1 overflow-hidden">
+          <Link
+            href="/dashboard/settings"
+            className="flex items-center gap-3 border border-transparent group-hover:bg-[#18181b] group-hover:border-[#27272a] p-2 rounded-xl transition-all duration-200 flex-1 overflow-hidden"
+          >
             <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0">
               <User className="w-4 h-4 text-zinc-500" />
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white truncate">
-                {mounted ? (profile ? `${profile.first_name} ${profile.last_name}` : "Loading...") : "Loading..."}
+                {profile ? `${profile.first_name} ${profile.last_name}` : "Loading..."}
               </p>
               <p className="text-[10px] text-zinc-500 truncate">
-                {mounted && profile ? (isAdmin ? "Admin Plan" : "Free Plan") : ""}
+                {profile ? (isAdmin ? "Admin Plan" : "Free Plan") : ""}
               </p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className="p-2 text-zinc-500 hover:text-blue-400 transition-colors flex-shrink-0"

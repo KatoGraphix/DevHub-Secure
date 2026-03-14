@@ -4,13 +4,18 @@ export const dynamic = "force-dynamic"
 
 import { useEffect, useState, KeyboardEvent } from "react"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 import { 
   CheckSquare, 
   Sparkles, 
   Cpu, 
   Command, 
-  ArrowRight 
+  ArrowRight,
+  Plus,
+  Loader2
 } from "lucide-react"
+import { createClient } from "@/utils/supabase/client"
+import { toast } from "sonner"
 
 interface GeneratedTask {
   title: string
@@ -25,9 +30,11 @@ interface IntelligenceResponse {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [input, setInput] = useState("")
   const [analyzing, setAnalyzing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<IntelligenceResponse | null>(null)
 
@@ -40,6 +47,7 @@ export default function DashboardPage() {
     if (!input.trim() || analyzing) return
     setAnalyzing(true)
     setError(null)
+    setResult(null)
 
     try {
       const res = await fetch("/api/task-intelligence", {
@@ -61,9 +69,44 @@ export default function DashboardPage() {
           ? err.message
           : "Something went wrong while contacting the AI service."
       setError(message)
-      setResult(null)
     } finally {
       setAnalyzing(false)
+    }
+  }
+
+  const saveTasksToSchedule = async () => {
+    if (!result) return
+    setSaving(true)
+
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error("You must be logged in to save tasks.")
+        return
+      }
+
+      const validPriorities = ["low", "medium", "high", "urgent"]
+      const tasksToInsert = result.tasks.map(task => ({
+        title: task.title,
+        description: task.description ?? null,
+        priority: validPriorities.includes(task.priority ?? "") ? task.priority : "medium",
+        due_date: null,
+        created_by: user.id,
+        status: "todo",
+      }))
+
+      const { error } = await supabase.from("tasks").insert(tasksToInsert)
+      if (error) throw error
+
+      toast.success(`${tasksToInsert.length} task${tasksToInsert.length !== 1 ? "s" : ""} added to your schedule!`)
+      setResult(null)
+      setInput("")
+      router.push("/dashboard/tasks")
+    } catch {
+      toast.error("Failed to save tasks. Please try again.")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -122,16 +165,16 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-4 text-[11px] text-zinc-600 font-medium">
             <div className="flex items-center gap-1.5 opacity-60">
-                <Sparkles size={12} />
-                <span className="uppercase tracking-widest">Natural language supported</span>
+              <Sparkles size={12} />
+              <span className="uppercase tracking-widest">Natural language supported</span>
             </div>
             <span className="opacity-30">•</span>
             <div className="flex items-center gap-1.5 opacity-60">
-                <div className="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 px-1 py-0.5 rounded text-[8px] text-zinc-600 font-mono">
-                  <Command size={8} />
-                  <span>Enter</span>
-                </div>
-                <span className="uppercase tracking-widest">to analyze</span>
+              <div className="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 px-1 py-0.5 rounded text-[8px] text-zinc-600 font-mono">
+                <Command size={8} />
+                <span>Enter</span>
+              </div>
+              <span className="uppercase tracking-widest">to analyze</span>
             </div>
           </div>
 
@@ -156,10 +199,7 @@ export default function DashboardPage() {
             <div className="flex flex-col items-center justify-center flex-1 space-y-4">
               <div className="relative mb-2">
                 <motion.div 
-                  animate={{ 
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3]
-                  }}
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
                   transition={{ duration: 1.8, repeat: Infinity }}
                   className="absolute inset-0 bg-blue-500 rounded-full blur-2xl"
                 />
@@ -175,9 +215,7 @@ export default function DashboardPage() {
           {!analyzing && error && (
             <div className="flex flex-col items-center justify-center flex-1 space-y-3">
               <h3 className="text-red-400 text-lg font-bold">Unable to generate tasks</h3>
-              <p className="text-zinc-500 text-sm max-w-[260px] leading-relaxed">
-                {error}
-              </p>
+              <p className="text-zinc-500 text-sm max-w-[260px] leading-relaxed">{error}</p>
             </div>
           )}
 
@@ -185,39 +223,42 @@ export default function DashboardPage() {
             <div className="flex flex-col items-start text-left space-y-4 flex-1">
               <div>
                 <h3 className="text-white text-lg font-bold mb-1">AI Task Plan</h3>
-                <p className="text-zinc-500 text-sm leading-relaxed">
-                  {result.summary}
-                </p>
+                <p className="text-zinc-500 text-sm leading-relaxed">{result.summary}</p>
               </div>
-              <div className="space-y-2 w-full">
+              <div className="space-y-2 w-full flex-1 overflow-y-auto">
                 {result.tasks.map((task, index) => (
                   <div
                     key={index}
                     className="w-full rounded-xl border border-[#27272a] bg-[#09090b] px-4 py-3 text-left"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-white">
-                        {task.title}
-                      </p>
+                      <p className="text-sm font-semibold text-white">{task.title}</p>
                       {task.priority && (
-                        <span className="text-[10px] uppercase tracking-widest text-blue-400">
+                        <span className="text-[10px] uppercase tracking-widest text-blue-400 shrink-0">
                           {task.priority}
                         </span>
                       )}
                     </div>
                     {task.description && (
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {task.description}
-                      </p>
-                    )}
-                    {task.due_date && (
-                      <p className="text-[10px] text-zinc-600 mt-1">
-                        Due: {task.due_date}
-                      </p>
+                      <p className="text-xs text-zinc-500 mt-1">{task.description}</p>
                     )}
                   </div>
                 ))}
               </div>
+
+              {/* Save to Schedule button */}
+              <button
+                onClick={saveTasksToSchedule}
+                disabled={saving}
+                className="w-full mt-auto bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-sm uppercase tracking-widest transition-all"
+              >
+                {saving ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Plus size={16} />
+                )}
+                {saving ? "Saving..." : `Add ${result.tasks.length} task${result.tasks.length !== 1 ? "s" : ""} to Schedule`}
+              </button>
             </div>
           )}
 
@@ -225,16 +266,12 @@ export default function DashboardPage() {
             <div className="flex flex-col items-center justify-center flex-1 space-y-4">
               <div className="relative mb-4">
                 <motion.div 
-                  animate={{ 
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3]
-                  }}
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
                   transition={{ duration: 3, repeat: Infinity }}
                   className="absolute inset-0 bg-blue-500 rounded-full blur-2xl"
                 />
                 <div className="w-3 h-3 bg-blue-400 rounded-full relative z-10 shadow-[0_0_15px_rgba(96,165,250,0.8)]" />
               </div>
-
               <h3 className="text-white text-lg font-bold">Waiting for task input</h3>
               <p className="text-zinc-600 text-sm max-w-[240px] leading-relaxed">
                 AI insights will appear here once you describe your task
@@ -252,23 +289,26 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Footer Info / Tip */}
+      {/* Footer */}
       <div className="flex items-center justify-between pt-10 border-t border-[#1c1c1f]">
         <div className="flex items-center gap-8">
-            <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-600">Model</p>
-                <p className="text-xs text-zinc-400 font-medium tracking-tight">
-                  {process.env.NEXT_PUBLIC_MODEL_NAME ?? "Configured via API"}
-                </p>
-            </div>
-            <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-600">Context</p>
-                <p className="text-xs text-zinc-400 font-medium tracking-tight">Active Project</p>
-            </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-600">Model</p>
+            <p className="text-xs text-zinc-400 font-medium tracking-tight">
+              {process.env.NEXT_PUBLIC_MODEL_NAME ?? "gpt-4o-mini"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-600">Context</p>
+            <p className="text-xs text-zinc-400 font-medium tracking-tight">Active Project</p>
+          </div>
         </div>
-        <button className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors group">
-            <span className="text-xs font-semibold uppercase tracking-widest">Explore Tools</span>
-            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+        <button 
+          onClick={() => router.push("/dashboard/tasks")}
+          className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors group"
+        >
+          <span className="text-xs font-semibold uppercase tracking-widest">View Schedule</span>
+          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
     </div>
