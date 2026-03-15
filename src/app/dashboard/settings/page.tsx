@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/utils/supabase/client"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -28,19 +28,21 @@ export default function SettingsPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [passwords, setPasswords] = useState({ new: "", confirm: "" })
   const [profileForm, setProfileForm] = useState({
-    first_name: profile?.first_name ?? "",
-    last_name: profile?.last_name ?? "",
-    position: profile?.position ?? "",
+    first_name: "",
+    last_name: "",
+    position: "",
   })
 
-  // Sync form when profile loads
-  if (profile && !profileForm.first_name && !profileForm.last_name) {
-    setProfileForm({
-      first_name: profile.first_name,
-      last_name: profile.last_name,
-      position: profile.position ?? "",
-    })
-  }
+  // Populate form once profile has loaded from context
+  useEffect(() => {
+    if (profile) {
+      setProfileForm({
+        first_name: profile.first_name ?? "",
+        last_name: profile.last_name ?? "",
+        position: profile.position ?? "",
+      })
+    }
+  }, [profile])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()

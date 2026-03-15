@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { motion, AnimatePresence } from "framer-motion"
@@ -54,7 +54,7 @@ const priorityStyles: Record<string, string> = {
   urgent: "bg-red-500/10 text-red-500 border-red-500/20",
 }
 
-export default function TasksPage() {
+function TasksContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -602,5 +602,17 @@ export default function TasksPage() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <TasksContent />
+    </Suspense>
   )
 }
