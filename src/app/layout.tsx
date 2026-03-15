@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   description: "Internal developer task tracking and API documentation dashboard",
   icons: {
     icon: "/favicon.png",
+    apple: "/favicon.png",
+    shortcut: "/favicon.png",
   }
 };
 
