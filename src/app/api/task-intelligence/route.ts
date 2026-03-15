@@ -39,6 +39,19 @@ export async function POST(request: Request) {
     return NextResponse.json(result)
   } catch (error) {
     console.error("Task intelligence error:", error)
+    const raw = error instanceof Error ? error.message : String(error)
+    if (raw.includes("insufficient_quota")) {
+      return NextResponse.json(
+        { error: "OpenAI quota exceeded. Please check your plan and billing at platform.openai.com." },
+        { status: 402 }
+      )
+    }
+    if (raw.includes("invalid_api_key") || raw.includes("Incorrect API key")) {
+      return NextResponse.json(
+        { error: "The OPENAI_API_KEY secret is invalid. Update it in your Replit Secrets." },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: "Failed to contact the AI service. Please try again later." },
       { status: 500 }

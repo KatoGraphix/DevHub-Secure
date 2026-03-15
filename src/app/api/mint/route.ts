@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server"
+import { createAdminClient } from "@/utils/supabase/admin"
 import { NextResponse } from "next/server"
 
 /**
@@ -14,7 +14,7 @@ import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = await request.json()
     const { table, data } = body
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = await request.json()
     const { table, id, data } = body
 
@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { searchParams } = new URL(request.url)
     const table = searchParams.get("table")
     const id = searchParams.get("id")
