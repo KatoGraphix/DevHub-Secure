@@ -29,6 +29,7 @@ import {
 import { useProfile } from "@/components/providers/ProfileProvider"
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { exportOperatorManual } from "@/utils/export-pdf"
 
 interface NavItem {
   href: string
@@ -187,6 +188,17 @@ export default function Sidebar() {
               </div>
             )
           })}
+
+          {/* Manual Download Button */}
+          <div className="px-4 py-2">
+            <button
+              onClick={() => exportOperatorManual(profile?.first_name || 'Operative')}
+              className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-cyan-500/60 hover:text-cyan-400 hover:bg-cyan-500/5 transition-all group border border-dashed border-cyan-500/10 hover:border-cyan-500/30"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Digital Handbook (PDF)</span>
+            </button>
+          </div>
         </nav>
 
         {/* User Footer */}

@@ -183,3 +183,105 @@ export async function exportAdvancedReport(
   console.log('[CRYPTO-PDF] Success. Report transmitted to browser terminal.')
 
 }
+
+export async function exportOperatorManual(userName: string) {
+  const doc = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const now = new Date()
+
+  // --- Header ---
+  doc.setFillColor(...COLORS.cyan)
+  doc.rect(0, 0, pageWidth, 40, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(24)
+  doc.text('DEVHUB: OPERATOR MANUAL', 20, 25)
+  
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`DELIVERED TO: ${userName.toUpperCase()}`, 20, 34)
+  doc.text(`DATE: ${now.toLocaleDateString()}`, pageWidth - 20, 34, { align: 'right' })
+
+  let y = 55
+  doc.setTextColor(...COLORS.dark)
+  
+  const sections = [
+    {
+      title: '1. SYSTEM OVERVIEW',
+      content: [
+        'DevHub is an industrial-grade "Smart Schedule" and AI-integrated dashboard.',
+        'It centralizes task tracking, partner API documentation, and analytics into',
+        'a single, secure environment.',
+        '',
+        '• Visibility: Real-time tracking of every objective.',
+        '• Velocity: Mission duration tracking from creation to completion.',
+        '• Security: Role-based access and CC-audited notifications.'
+      ]
+    },
+    {
+      title: '2. NAVIGATION & MODULES',
+      content: [
+        '• AI Intelligence (/dashboard): Central command overview.',
+        '• Smart Schedule (/dashboard/tasks): Kanban/List task management.',
+        '• API Docs (/dashboard/api-docs): Technical documentation for partners.',
+        '• Admin Panel (/dashboard/admin): Restricted to commanders (Admin Assigners).'
+      ]
+    },
+    {
+      title: '3. ADVANCED REPORTING',
+      content: [
+        'DevHub features a high-fidelity Performance Audit Export system.',
+        'Reports include Mission Duration, Completion Rates, and Status Breakdown.',
+        'Exports are automatically named with the operative identity and date.'
+      ]
+    },
+    {
+      title: '4. MISSION LIFE CYCLE',
+      content: [
+        '1. Creation: Objective initialized in the system.',
+        '2. Assignment: Automated email dispatched (CC CEO/CTO).',
+        '3. Execution: Status updates (To Do -> In Progress -> Review).',
+        '4. Completion: Moving to "Done" triggers final timestamping and',
+        '   "Mission Accomplished" notifications.'
+      ]
+    }
+  ]
+
+  sections.forEach(section => {
+    if (y > 250) {
+      doc.addPage()
+      y = 20
+    }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(14)
+    doc.text(section.title, 20, y)
+    y += 10
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    section.content.forEach(line => {
+      doc.text(line, 20, y)
+      y += 6
+    })
+    y += 10
+  })
+
+  // Footer
+  const pageCount = doc.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(...COLORS.slate)
+    doc.text(`CONFIDENTIAL // PAGE ${i} OF ${pageCount}`, pageWidth / 2, 285, { align: 'center' })
+  }
+
+  const fileName = `devhub_operator_manual_${now.toISOString().split('T')[0]}.pdf`
+  const pdfBlob = doc.output('blob')
+  const url = URL.createObjectURL(pdfBlob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
