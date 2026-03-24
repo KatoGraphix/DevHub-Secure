@@ -99,6 +99,15 @@ function TasksContent() {
 
     if (error) { console.error("Error creating task:", error); return }
 
+    // Trigger email notification if assigned
+    if (newTask.assigned_to) {
+      fetch("/api/notifications/task-assigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId: data[0].id, assigneeId: newTask.assigned_to })
+      }).catch(err => console.error("Notification failed:", err))
+    }
+
     setTasks(prev => [data[0], ...prev])
     setShowCreateModal(false)
     setNewTask({ title: "", description: "", priority: "medium", due_date: "", assigned_to: "" })
@@ -107,6 +116,16 @@ function TasksContent() {
   const updateTaskAssignment = async (taskId: string, assignedTo: string) => {
     const { error } = await supabase.from("tasks").update({ assigned_to: assignedTo || null }).eq("id", taskId)
     if (error) { console.error("Error updating task assignment:", error); return }
+    
+    // Trigger email notification
+    if (assignedTo) {
+      fetch("/api/notifications/task-assigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, assigneeId: assignedTo })
+      }).catch(err => console.error("Notification failed:", err))
+    }
+
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assigned_to: assignedTo || null } : t))
   }
 
