@@ -18,6 +18,7 @@ import {
   Code2,
   Lock,
   Play,
+  CheckCircle2,
   CheckCircle,
   XCircle,
   Loader2,
@@ -51,19 +52,21 @@ interface ScriptExample {
 }
 
 const externalAPIs = [
-  { name: "SumSub KYC", icon: ShieldCheck, description: "Deep verification for SumSub customers. Handles AML, KYC and identity proofing protocols.", color: "text-emerald-400", bg: "bg-emerald-500/10", status: "Active", endpoint: "https://api.sumsub.com/", docs: "https://developers.sumsub.com/" },
-  { name: "TRUID Auth", icon: CreditCard, description: "Secure identity and access management. Provides specialised TRUID authentication layers.", color: "text-blue-400", bg: "bg-blue-500/10", status: "Active", endpoint: "https://api.truid.com/", docs: "https://docs.truid.com/" },
-  { name: "Experian Credit", icon: Building2, description: "Credit scoring and financial background checks via Experian's comprehensive registry.", color: "text-purple-400", bg: "bg-purple-500/10", status: "Active", endpoint: "https://api.experian.com/", docs: "https://developer.experian.com/" },
-  { name: "Iress Market", icon: BarChart3, description: "Real-time stock market data and financial service execution via the Iress infrastructure.", color: "text-amber-400", bg: "bg-amber-500/10", status: "Active", endpoint: "https://api.iress.com/", docs: "https://developers.iress.com/" },
-  { name: "Yahoo Finance", icon: Globe, description: "Fallback financial data source for global asset prices and historical market statistics.", color: "text-red-400", bg: "bg-red-500/10", status: "Active", endpoint: "https://query1.finance.yahoo.com/", docs: "https://developer.yahoo.com/finance/" },
-  { name: "Resend Mail", icon: Mail, description: "Transactional email service for system notifications, security alerts, and user communications.", color: "text-cyan-400", bg: "bg-cyan-500/10", status: "Operational", endpoint: "https://api.resend.com/", docs: "https://resend.com/docs" },
-  { name: "Alliance News", icon: Search, description: "Real-time financial news wire integration for sentiment analysis and market alerts.", color: "text-indigo-400", bg: "bg-indigo-500/10", status: "Live", endpoint: "https://api.alliance-news.com/", docs: "https://developers.alliance-news.com/" },
+  { id: "sumsub", name: "SumSub KYC", icon: ShieldCheck, description: "Deep verification for SumSub customers. Handles AML, KYC and identity proofing protocols.", color: "text-emerald-400", bg: "bg-emerald-500/10", status: "Active", endpoint: "https://api.sumsub.com/", docs: "https://developers.sumsub.com/" },
+  { id: "truid", name: "TRUID Auth", icon: CreditCard, description: "Secure identity and access management. Provides specialised TRUID authentication layers.", color: "text-blue-400", bg: "bg-blue-500/10", status: "Active", endpoint: "https://api.truid.com/", docs: "https://docs.truid.com/" },
+  { id: "experian", name: "Experian Credit", icon: Building2, description: "Credit scoring and financial background checks via Experian's comprehensive registry.", color: "text-purple-400", bg: "bg-purple-500/10", status: "Active", endpoint: "https://api.experian.com/", docs: "https://developer.experian.com/" },
+  { id: "iress", name: "Iress Market", icon: BarChart3, description: "Real-time stock market data and financial service execution via the Iress infrastructure.", color: "text-amber-400", bg: "bg-amber-500/10", status: "Active", endpoint: "https://api.iress.com/", docs: "https://developers.iress.com/" },
+  { id: "yahoo", name: "Yahoo Finance", icon: Globe, description: "Fallback financial data source for global asset prices and historical market statistics.", color: "text-red-400", bg: "bg-red-500/10", status: "Active", endpoint: "https://query1.finance.yahoo.com/", docs: "https://developer.yahoo.com/finance/" },
+  { id: "resend", name: "SMTP Relay (Gmail)", icon: Mail, description: "Google SMTP integration for system notifications and user communications. Requires App Password.", color: "text-cyan-400", bg: "bg-cyan-500/10", status: "Active", endpoint: "smtp.gmail.com:465", docs: "https://support.google.com/accounts/answer/185833" },
+  { id: "alliance", name: "Alliance News", icon: Search, description: "Real-time financial news wire integration for sentiment analysis and market alerts.", color: "text-indigo-400", bg: "bg-indigo-500/10", status: "Live", endpoint: "https://api.alliance-news.com/", docs: "https://developers.alliance-news.com/" },
 ]
 
 const internalAPIs = [
-  { name: "MINT Database API", icon: Database, description: "Core backend infrastructure. Handles DevHub database operations, auth, and real-time sync.", color: "text-emerald-500", bg: "bg-emerald-500/5", status: "Syncing", endpoint: "/api/mint", methods: ["POST", "PATCH", "DELETE"], docs: "Interactive below" },
-  { name: "Script Runner API", icon: Code2, description: "Execute predefined scripts for CRUD operations on DevHub profiles, tasks, and the external MINT database.", color: "text-orange-500", bg: "bg-orange-500/5", status: "Active", endpoint: "/api/scripts", methods: ["POST", "GET"], docs: "Interactive below" },
-  { name: "External MINT DB", icon: Server, description: "Direct connection to the external MINT Supabase project. Supports table reads, writes, deletes, and test-data removal.", color: "text-violet-400", bg: "bg-violet-500/5", status: "Connected", endpoint: "https://mfxnghmuccevsxwcetej.supabase.co", methods: ["POST"], docs: "Interactive below" },
+  { id: "mint-db", name: "MINT Database API", icon: Database, description: "Core backend infrastructure. Handles DevHub database operations, auth, and real-time sync.", color: "text-emerald-500", bg: "bg-emerald-500/5", status: "Syncing", endpoint: "/api/mint", methods: ["POST", "PATCH", "DELETE"], docs: "Interactive below" },
+  { id: "script-runner", name: "Script Runner API", icon: Code2, description: "Execute predefined scripts for CRUD operations on DevHub profiles, tasks, and the external MINT database.", color: "text-orange-500", bg: "bg-orange-500/5", status: "Active", endpoint: "/api/scripts", methods: ["POST", "GET"], docs: "Interactive below" },
+  { id: "directives", name: "Directives API", icon: Mail, description: "Automated Mission Directive system. Sends cinematic task assignment emails with leadership CCs.", color: "text-cyan-400", bg: "bg-cyan-500/5", status: "Live", endpoint: "/api/notifications/task-assigned", methods: ["POST"], docs: "Requires Google SMTP" },
+  { id: "success-directives", name: "Success Directives API", icon: CheckCircle2, description: "Mission Success reporting system. Sends emerald-themed victory emails upon task completion.", color: "text-emerald-400", bg: "bg-emerald-500/5", status: "Live", endpoint: "/api/notifications/task-completed", methods: ["POST"], docs: "Requires Google SMTP" },
+  { id: "mint-supabase", name: "External MINT DB", icon: Server, description: "Direct connection to the external MINT Supabase project. Supports table reads, writes, deletes, and test-data removal.", color: "text-violet-400", bg: "bg-violet-500/5", status: "Connected", endpoint: "https://mfxnghmuccevsxwcetej.supabase.co", methods: ["POST"], docs: "Interactive below" },
 ]
 
 const devhubScriptExamples: Record<string, ScriptExample> = {
@@ -145,8 +148,14 @@ const mintScriptExamples: Record<string, ScriptExample> = {
   },
 }
 
-export default function ApiDocsPage() {
-  const [activeTab, setActiveTab] = useState<"external" | "internal" | "scripts">("internal")
+import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
+
+function ApiDocsContent() {
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get("tab") as "external" | "internal" | "scripts") || "internal"
+  
+  const [activeTab, setActiveTab] = useState<"external" | "internal" | "scripts">(initialTab)
   const [selectedDb, setSelectedDb] = useState<"devhub" | "mint">("mint")
   const [selectedScript, setSelectedScript] = useState<string>("remove_test_cases")
   const [scriptResult, setScriptResult] = useState<ScriptResult | null>(null)
@@ -183,12 +192,12 @@ export default function ApiDocsPage() {
     <div className="max-w-7xl mx-auto px-8 py-12 space-y-12 h-screen overflow-auto custom-scrollbar bg-[#09090b]">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+        <div className="w-12 h-12 bg-cyan-500/10 border border-cyan-500/20 rounded-xl flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
           <BookOpen size={28} />
         </div>
         <div>
-          <h1 className="text-4xl font-black text-white tracking-widest uppercase">API Documentation</h1>
-          <p className="text-zinc-600 text-xs font-bold uppercase tracking-[0.3em] mt-2">System Integration & Technical Resource Ledger</p>
+          <h1 className="text-4xl font-black text-white tracking-widest uppercase italic">API Documentation</h1>
+          <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.4em] mt-2">Secure Protocol Integration Ledger</p>
         </div>
       </div>
 
@@ -198,7 +207,7 @@ export default function ApiDocsPage() {
           <Lock className="text-amber-400 mt-0.5 shrink-0" size={20} />
           <div>
             <h3 className="text-lg font-bold text-amber-400 mb-2">Authentication Required</h3>
-            <p className="text-zinc-300 text-sm mb-3">All internal endpoints require an active session. Pass <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: "devhub"</code> or <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: "mint"</code> in the request body to select the target database.</p>
+            <p className="text-zinc-300 text-sm mb-3">All internal endpoints require an active session. Pass <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: &quot;devhub&quot;</code> or <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: &quot;mint&quot;</code> in the request body to select the target database.</p>
             <div className="text-xs text-zinc-500 space-y-1">
               <div>• Rate Limit: 100 requests per minute per user</div>
               <div>• Unauthorized requests return 401 status codes</div>
@@ -226,7 +235,7 @@ export default function ApiDocsPage() {
       {activeTab === "external" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {externalAPIs.map((api) => (
-            <div key={api.name} className={`${api.bg} border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group`}>
+            <div key={api.name} id={api.id} className={`${api.bg} border border-zinc-900 rounded-xl p-6 hover:border-cyan-500/20 transition-all group scroll-mt-24`}>
               <div className="flex items-start justify-between mb-4">
                 <div className={`w-10 h-10 ${api.bg} border border-zinc-700 rounded-lg flex items-center justify-center ${api.color} group-hover:scale-110 transition-transform`}>
                   <api.icon size={20} />
@@ -250,8 +259,8 @@ export default function ApiDocsPage() {
       {activeTab === "internal" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {internalAPIs.map((api, index) => (
-            <motion.div key={api.name} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
-              className={`${api.bg} border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group`}>
+            <motion.div key={api.name} id={api.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
+              className={`${api.bg} border border-zinc-900 rounded-xl p-6 hover:border-cyan-500/20 transition-all group scroll-mt-24`}>
               <div className="flex items-start justify-between mb-4">
                 <div className={`w-10 h-10 ${api.bg} border border-zinc-700 rounded-lg flex items-center justify-center ${api.color} group-hover:scale-110 transition-transform`}>
                   <api.icon size={20} />
@@ -390,7 +399,7 @@ export default function ApiDocsPage() {
                           Set <code className="bg-zinc-800 px-1 rounded font-mono">dry_run: true</code> first to preview which records will be deleted without actually removing them. Once confirmed, set <code className="bg-zinc-800 px-1 rounded font-mono">dry_run: false</code> to execute.
                         </p>
                         <div className="text-xs text-zinc-600 space-y-1 pt-1">
-                          <div><span className="text-zinc-400">mode options:</span> <code className="font-mono">"contains"</code> · <code className="font-mono">"starts_with"</code> · <code className="font-mono">"equals"</code></div>
+                          <div><span className="text-zinc-400">mode options:</span> <code className="font-mono">&quot;contains&quot;</code> · <code className="font-mono">&quot;starts_with&quot;</code> · <code className="font-mono">&quot;equals&quot;</code></div>
                         </div>
                       </div>
                     )}
@@ -430,5 +439,17 @@ export default function ApiDocsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ApiDocsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen bg-[#09090b]">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    }>
+      <ApiDocsContent />
+    </Suspense>
   )
 }

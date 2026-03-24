@@ -78,7 +78,8 @@ CREATE TABLE public.tasks (
     assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    completed_at timestamp with time zone
 );
 
 -- Trigger for updated_at

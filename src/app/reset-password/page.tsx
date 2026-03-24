@@ -12,7 +12,9 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2, Shield, Eye, EyeOff, Terminal, AlertTriangle } from "lucide-react"
 
-export default function ResetPasswordPage() {
+import { Suspense } from "react"
+
+function ResetPasswordContent() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -267,5 +269,17 @@ export default function ResetPasswordPage() {
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }
