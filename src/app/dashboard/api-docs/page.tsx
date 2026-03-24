@@ -19,6 +19,7 @@ import {
   Lock,
   Play,
   CheckCircle2,
+  CheckCircle,
   XCircle,
   Loader2,
   Copy,
@@ -148,8 +149,9 @@ const mintScriptExamples: Record<string, ScriptExample> = {
 }
 
 import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 
-export default function ApiDocsPage() {
+function ApiDocsContent() {
   const searchParams = useSearchParams()
   const initialTab = (searchParams.get("tab") as "external" | "internal" | "scripts") || "internal"
   
@@ -205,7 +207,7 @@ export default function ApiDocsPage() {
           <Lock className="text-amber-400 mt-0.5 shrink-0" size={20} />
           <div>
             <h3 className="text-lg font-bold text-amber-400 mb-2">Authentication Required</h3>
-            <p className="text-zinc-300 text-sm mb-3">All internal endpoints require an active session. Pass <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: "devhub"</code> or <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: "mint"</code> in the request body to select the target database.</p>
+            <p className="text-zinc-300 text-sm mb-3">All internal endpoints require an active session. Pass <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: &quot;devhub&quot;</code> or <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-mono">db: &quot;mint&quot;</code> in the request body to select the target database.</p>
             <div className="text-xs text-zinc-500 space-y-1">
               <div>• Rate Limit: 100 requests per minute per user</div>
               <div>• Unauthorized requests return 401 status codes</div>
@@ -397,7 +399,7 @@ export default function ApiDocsPage() {
                           Set <code className="bg-zinc-800 px-1 rounded font-mono">dry_run: true</code> first to preview which records will be deleted without actually removing them. Once confirmed, set <code className="bg-zinc-800 px-1 rounded font-mono">dry_run: false</code> to execute.
                         </p>
                         <div className="text-xs text-zinc-600 space-y-1 pt-1">
-                          <div><span className="text-zinc-400">mode options:</span> <code className="font-mono">"contains"</code> · <code className="font-mono">"starts_with"</code> · <code className="font-mono">"equals"</code></div>
+                          <div><span className="text-zinc-400">mode options:</span> <code className="font-mono">&quot;contains&quot;</code> · <code className="font-mono">&quot;starts_with&quot;</code> · <code className="font-mono">&quot;equals&quot;</code></div>
                         </div>
                       </div>
                     )}
@@ -437,5 +439,17 @@ export default function ApiDocsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ApiDocsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen bg-[#09090b]">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    }>
+      <ApiDocsContent />
+    </Suspense>
   )
 }
